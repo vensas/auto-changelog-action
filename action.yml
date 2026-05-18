@@ -1,0 +1,88 @@
+name: 'Auto Changelog'
+description: 'AI-powered changelog generator using the GitHub Models API. Analyzes PR diffs and updates CHANGELOG.md files with Keep a Changelog-formatted entries.'
+author: 'vensas'
+
+branding:
+  icon: 'file-text'
+  color: 'blue'
+
+inputs:
+  ai-api-key:
+    description: 'GitHub Models API key (a PAT with models:read permission, or a GitHub Copilot token)'
+    required: true
+  github-token:
+    description: 'GitHub token used to fetch linked issue details from the API'
+    required: false
+  pr-number:
+    description: 'Pull request number'
+    required: true
+  pr-title:
+    description: 'Pull request title'
+    required: true
+  pr-body:
+    description: 'Pull request body/description (used to extract closing-keyword issue references)'
+    required: false
+    default: ''
+  base-ref:
+    description: 'Base branch name (e.g. main)'
+    required: true
+  packages:
+    description: |
+      JSON array of package configurations. Each entry must include:
+        - name:          Short identifier for the package (e.g. "frontend")
+        - path:          Relative path to the package root (e.g. "src/frontend")
+        - changelogFile: Changelog filename inside that path (usually "CHANGELOG.md")
+        - description:   One-line description used as context for the AI
+        - patterns:      Array of regex patterns matching files that belong to this package
+      Example:
+        '[{"name":"api","path":"src/api","changelogFile":"CHANGELOG.md","description":"Node.js REST API","patterns":["^src/api/"]}]'
+    required: true
+  project-context:
+    description: 'Short description of your project, included in the AI prompt for more accurate entries'
+    required: false
+    default: ''
+  model:
+    description: 'GitHub Models model identifier to use for generation'
+    required: false
+    default: 'gpt-4.1'
+  github-models-api:
+    description: 'GitHub Models API endpoint URL'
+    required: false
+    default: 'https://models.github.ai/inference/chat/completions'
+
+outputs:
+  has-changes:
+    description: '"true" if any CHANGELOG.md files were updated, "false" otherwise'
+    value: ${{ steps.generate.outputs.has_changes }}
+  updates:
+    description: 'Comma-separated list of packages updated with their version bump type (e.g. "frontend: minor, api: patch")'
+    value: ${{ steps.generate.outputs.updates }}
+  error-message:
+    description: 'Error message if changelog generation failed'
+    value: ${{ steps.generate.outputs.error_message }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Generate changelog entries
+      id: generate
+      shell: bash
+      env:
+        AI_API_KEY: ${{ inputs.ai-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        BASE_REF: ${{ inputs.base-ref }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.event.repository.name }}
+        PACKAGES_CONFIG: ${{ inputs.packages }}
+        PROJECT_CONTEXT: ${{ inputs.project-context }}
+        AI_MODEL: ${{ inputs.model }}
+        GITHUB_MODELS_API_URL: ${{ inputs.github-models-api }}
+      run: node ${{ github.action_path }}/generate-changelog.js

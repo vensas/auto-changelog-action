@@ -49,6 +49,14 @@ inputs:
     description: 'GitHub Models API endpoint URL'
     required: false
     default: 'https://models.github.ai/inference/chat/completions'
+  max-diff-chars:
+    description: 'Maximum number of characters from the per-package diff to send to the AI'
+    required: false
+    default: '8000'
+  dry-run:
+    description: 'When "true", generates entries and prints them to the workflow summary without modifying any CHANGELOG.md files'
+    required: false
+    default: 'false'
 
 outputs:
   has-changes:
@@ -60,6 +68,9 @@ outputs:
   error-message:
     description: 'Error message if changelog generation failed'
     value: ${{ steps.generate.outputs.error_message }}
+  generated-entry:
+    description: 'Raw markdown text of the generated changelog entries (set even in dry-run mode)'
+    value: ${{ steps.generate.outputs.generated_entry }}
 
 runs:
   using: 'composite'
@@ -85,4 +96,6 @@ runs:
         PROJECT_CONTEXT: ${{ inputs.project-context }}
         AI_MODEL: ${{ inputs.model }}
         GITHUB_MODELS_API_URL: ${{ inputs.github-models-api }}
+        MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: node ${{ github.action_path }}/generate-changelog.js

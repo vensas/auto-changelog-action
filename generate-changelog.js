@@ -22,6 +22,8 @@
  *   PROJECT_CONTEXT      - Short project description for the AI prompt
  *   AI_MODEL             - Model identifier (default: gpt-4.1)
  *   GITHUB_MODELS_API_URL - API endpoint URL
+ *   MAX_DIFF_CHARS       - Max diff characters sent to the AI (default: 8000)
+ *   DRY_RUN              - When "true", prints entries without modifying any files
  */
 
 const fs = require('fs');
@@ -34,6 +36,8 @@ const GITHUB_API = 'https://api.github.com';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS, 10) || 8000;
+const DRY_RUN = process.env.DRY_RUN === 'true';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -261,7 +265,7 @@ ISSUE CONTEXT (what was planned / why this PR exists):
 ${issueContext}
 
 CODE CHANGES (filtered to ${packageInfo.name} only):
-${diff.substring(0, 8000)}${diff.length > 8000 ? '\n... (diff truncated)' : ''}
+${diff.substring(0, MAX_DIFF_CHARS)}${diff.length > MAX_DIFF_CHARS ? '\n... (diff truncated)' : ''}
 
 TASK:
 1. Use the ISSUE CONTEXT to understand the intent behind the PR.
@@ -475,7 +479,12 @@ async function main() {
     console.log('ℹ️  No linked issues found — changelog entries will link to the PR');
   }
 
+  if (DRY_RUN) {
+    console.log('ℹ️  dry-run mode enabled — CHANGELOG.md files will not be modified');
+  }
+
   const updates = [];
+  const generatedEntries = [];
 
   for (const pkg of affected) {
     console.log(`\nProcessing package: ${pkg.name}`);
@@ -503,20 +512,50 @@ async function main() {
     }
 
     const entryWord = result.entries.length === 1 ? 'entry' : 'entries';
+    const categoryMarkdown = `### ${result.category}\n${result.entries.map(e => `- ${e}`).join('\n')}`;
     console.log(`  → ${result.versionBump} bump | ${result.category} | ${result.entries.length} ${entryWord}`);
 
-    updateChangelog(changelogPath, result.versionBump, result.category, result.entries);
+    if (DRY_RUN) {
+      console.log(`  [dry-run] Skipping file write. Generated entries:\n  ${categoryMarkdown.split('\n').join('\n  ')}`);
+    } else {
+      updateChangelog(changelogPath, result.versionBump, result.category, result.entries);
+    }
+
     updates.push(`${pkg.name}: ${result.versionBump}`);
+    generatedEntries.push({ name: pkg.name, versionBump: result.versionBump, markdown: categoryMarkdown });
+  }
+
+  // Emit generated-entry output (multiline, set regardless of dry-run)
+  if (generatedEntries.length > 0) {
+    const generatedMarkdown = generatedEntries.length === 1
+      ? generatedEntries[0].markdown
+      : generatedEntries.map(e => `**${e.name}** (${e.versionBump})\n${e.markdown}`).join('\n\n');
+
+    if (DRY_RUN && process.env.GITHUB_STEP_SUMMARY) {
+      fs.appendFileSync(
+        process.env.GITHUB_STEP_SUMMARY,
+        `## Changelog entries (dry run)\n\n${generatedMarkdown}\n`
+      );
+    }
+
+    if (process.env.GITHUB_OUTPUT) {
+      const delimiter = `ghadelimiter_${Date.now()}`;
+      fs.appendFileSync(
+        process.env.GITHUB_OUTPUT,
+        `generated_entry<<${delimiter}\n${generatedMarkdown}\n${delimiter}\n`
+      );
+    }
   }
 
   if (process.env.GITHUB_OUTPUT) {
-    if (updates.length > 0) {
+    const filesChanged = !DRY_RUN && updates.length > 0;
+    if (filesChanged) {
       fs.appendFileSync(
         process.env.GITHUB_OUTPUT,
         `has_changes=true\nupdates=${updates.join(', ')}\n`
       );
     } else {
-      fs.appendFileSync(process.env.GITHUB_OUTPUT, 'has_changes=false\n');
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_changes=false\nupdates=${updates.join(', ')}\n`);
     }
   }
 }

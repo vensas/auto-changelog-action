@@ -381,6 +381,47 @@ Respond with ONLY valid JSON:`;
 // ---------------------------------------------------------------------------
 
 /**
+ * Clear the [Unreleased] section of a CHANGELOG.md, removing all generated content
+ * while preserving the header and any subsequent release sections.
+ * Returns true if the file was modified.
+ */
+function clearChangelogUnreleased(changelogPath) {
+  let content;
+  try {
+    content = fs.readFileSync(changelogPath, 'utf-8');
+  } catch {
+    return false;
+  }
+
+  const headerIdx = content.indexOf('## [Unreleased]');
+  if (headerIdx === -1) return false;
+
+  // Find where the [Unreleased] section ends (start of next ## heading)
+  const nextSectionIdx = content.indexOf('\n## ', headerIdx + 1);
+  const sectionContent = nextSectionIdx === -1
+    ? content.slice(headerIdx)
+    : content.slice(headerIdx, nextSectionIdx);
+
+  // Nothing to clear if section body is already empty
+  const afterHeaderNewline = sectionContent.indexOf('\n');
+  if (afterHeaderNewline === -1 || !sectionContent.slice(afterHeaderNewline).trim()) {
+    return false;
+  }
+
+  const replacement = '## [Unreleased]\n\n';
+  const newContent = nextSectionIdx === -1
+    ? content.slice(0, headerIdx) + replacement
+    : content.slice(0, headerIdx) + replacement + content.slice(nextSectionIdx);
+
+  try {
+    fs.writeFileSync(changelogPath, newContent, 'utf-8');
+  } catch (error) {
+    throw new Error(`Failed to write ${changelogPath}: ${error.message}`);
+  }
+  return true;
+}
+
+/**
  * Update the [Unreleased] section of a CHANGELOG.md file, replacing any
  * existing content with the newly generated entries.
  */
@@ -461,9 +502,22 @@ async function main() {
   const affected = getAffectedPackages(files, packages);
 
   if (affected.length === 0) {
-    console.log('No affected packages with source-file changes.');
+    // No source-file changes detected — clear any previously generated [Unreleased] content
+    // so stale entries don't linger after a code revert.
+    let cleared = false;
+    if (DRY_RUN) {
+      console.log('ℹ️  [dry-run] No source changes — would clear [Unreleased] sections');
+    } else {
+      for (const pkg of packages) {
+        const changelogPath = path.join(pkg.path, pkg.changelogFile);
+        if (clearChangelogUnreleased(changelogPath)) {
+          console.log(`Cleared [Unreleased] section in ${changelogPath}`);
+          cleared = true;
+        }
+      }
+    }
     if (process.env.GITHUB_OUTPUT) {
-      fs.appendFileSync(process.env.GITHUB_OUTPUT, 'has_changes=false\n');
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_changes=${cleared}\nupdates=\ncleared=${cleared}\n`);
     }
     return;
   }
@@ -552,10 +606,10 @@ async function main() {
     if (filesChanged) {
       fs.appendFileSync(
         process.env.GITHUB_OUTPUT,
-        `has_changes=true\nupdates=${updates.join(', ')}\n`
+        `has_changes=true\nupdates=${updates.join(', ')}\ncleared=false\n`
       );
     } else {
-      fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_changes=false\nupdates=${updates.join(', ')}\n`);
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_changes=false\nupdates=${updates.join(', ')}\ncleared=false\n`);
     }
   }
 }

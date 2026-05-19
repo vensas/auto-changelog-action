@@ -566,24 +566,26 @@ async function main() {
     }
 
     const entryWord = result.entries.length === 1 ? 'entry' : 'entries';
-    const categoryMarkdown = `### ${result.category}\n${result.entries.map(e => `- ${e}`).join('\n')}`;
+    const versionComment = `<!-- Version: ${result.versionBump} -->`;
+    const categorySection = `### ${result.category}\n${result.entries.map(e => `- ${e}`).join('\n')}`;
+    const fullSection = `## [Unreleased]\n${versionComment}\n\n${categorySection}`;
     console.log(`  → ${result.versionBump} bump | ${result.category} | ${result.entries.length} ${entryWord}`);
 
     if (DRY_RUN) {
-      console.log(`  [dry-run] Skipping file write. Generated entries:\n  ${categoryMarkdown.split('\n').join('\n  ')}`);
+      console.log(`  [dry-run] Skipping file write. Would write:\n  ${fullSection.split('\n').join('\n  ')}`);
     } else {
       updateChangelog(changelogPath, result.versionBump, result.category, result.entries);
     }
 
     updates.push(`${pkg.name}: ${result.versionBump}`);
-    generatedEntries.push({ name: pkg.name, versionBump: result.versionBump, markdown: categoryMarkdown });
+    generatedEntries.push({ name: pkg.name, markdown: fullSection });
   }
 
   // Emit generated-entry output (multiline, set regardless of dry-run)
   if (generatedEntries.length > 0) {
     const generatedMarkdown = generatedEntries.length === 1
       ? generatedEntries[0].markdown
-      : generatedEntries.map(e => `**${e.name}** (${e.versionBump})\n${e.markdown}`).join('\n\n');
+      : generatedEntries.map(e => `**${e.name}**\n${e.markdown}`).join('\n\n');
 
     if (DRY_RUN && process.env.GITHUB_STEP_SUMMARY) {
       fs.appendFileSync(

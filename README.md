@@ -202,7 +202,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Initial release
 ```
 
-A `<!-- Version: minor -->` comment is inserted automatically by the action to record the intended version bump for use by release tooling.
+A `<!-- Version: minor -->` comment is inserted automatically by the action to record the intended version bump for use by the [auto-version-bump](https://github.com/vensas/auto-version-bump-action) action.
 
 ---
 

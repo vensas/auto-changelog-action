@@ -184,7 +184,7 @@ runs:
           if (isCleared) {
             body = `🧹 **Changelogs cleared**\n\nCode changes were reverted, so changelog entries have been removed from the \`[Unreleased]\` section.\n\n*This was done automatically by the changelog bot.*`;
           } else if (isDryRun) {
-            body = `📋 **Changelog preview** *(dry run — no files were modified)*\n\n\`\`\`markdown\n${entry}\n\`\`\``;
+            body = `📋 **Changelog preview**\n\n\`\`\`markdown\n${entry}\n\`\`\``;
           } else {
             body = `✅ **Changelog updated!**\n\nUpdated: ${updates}\n\n\`\`\`markdown\n${entry}\n\`\`\`\n\n*Generated using GitHub Models AI. Review and adjust if needed.*`;
           }

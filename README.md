@@ -19,7 +19,7 @@ The action handles the full lifecycle:
 | Requirement | Notes |
 |---|---|
 | **OpenAI API key (`ai-api-key`)** | An [OpenAI API key](https://platform.openai.com/api-keys), stored as a repository secret (e.g. `OPENAI_API_KEY`). Used only to call the OpenAI API — it does **not** need any GitHub permissions. |
-| **GitHub token for checkout/push** | A separate token (a repo-scoped PAT, or the default `${{ secrets.GITHUB_TOKEN }}`) with `contents: write`, used by the checkout step so the action can push the changelog commit back to the PR branch. Use a real PAT instead of `GITHUB_TOKEN` if you need the pushed commit to trigger downstream workflows (e.g. required status checks) — commits pushed with the default `GITHUB_TOKEN` don't trigger other workflow runs. |
+| **GitHub token for checkout** | The default `${{ secrets.GITHUB_TOKEN }}`, with `contents: write` granted via the job's `permissions` block, referenced in the checkout step so the action can push the changelog commit back to the PR branch. Note: pushes made with `GITHUB_TOKEN` don't trigger other workflow runs, so required status checks (if any) won't automatically re-run against the new commit. |
 | **`## [Unreleased]` section** | Each package's `CHANGELOG.md` must already contain this header. |
 
 ---
@@ -54,9 +54,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-          # Use a PAT so the pushed commit triggers downstream workflows (e.g. required checks).
-          # The default secrets.GITHUB_TOKEN also works, but pushed commits won't trigger other workflow runs.
-          token: ${{ secrets.REPO_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate changelog
         uses: vensas/auto-changelog-action@v1

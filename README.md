@@ -104,7 +104,7 @@ The action commits, pushes, and posts the PR comment automatically. The checkout
 | `base-ref` | Yes | — | Base branch name (e.g. `main`) |
 | `packages` | Yes | — | JSON array of package configurations (see below) |
 | `project-context` | No | `''` | Short project description added to the AI prompt |
-| `model` | No | `gpt-5.6-terra` | OpenAI model identifier |
+| `model` | No | `gpt-5.6-luna` | OpenAI model identifier |
 | `ai-api-url` | No | `https://api.openai.com/v1/chat/completions` | OpenAI-compatible chat completions endpoint URL |
 | `max-diff-chars` | No | `8000` | Maximum characters from the per-package diff sent to the AI |
 | `dry-run` | No | `false` | When `true`, generates entries and posts a preview comment without modifying any files |

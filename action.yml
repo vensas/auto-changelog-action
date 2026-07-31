@@ -44,7 +44,7 @@ inputs:
   model:
     description: 'OpenAI model identifier to use for generation'
     required: false
-    default: 'gpt-5.6-terra'
+    default: 'gpt-5.6-luna'
   ai-api-url:
     description: 'OpenAI-compatible chat completions endpoint URL'
     required: false

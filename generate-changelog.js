@@ -20,7 +20,7 @@
  *   PR_BODY              - Pull request description (for linked issue extraction)
  *   GITHUB_TOKEN         - GitHub token for fetching linked issue details
  *   PROJECT_CONTEXT      - Short project description for the AI prompt
- *   AI_MODEL             - Model identifier (default: gpt-5.6-terra)
+ *   AI_MODEL             - Model identifier (default: gpt-5.6-luna)
  *   AI_API_URL           - API endpoint URL (default: OpenAI chat completions)
  *   MAX_DIFF_CHARS       - Max diff characters sent to the AI (default: 8000)
  *   DRY_RUN              - When "true", prints entries without modifying any files
@@ -31,7 +31,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const AI_API_URL = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
-const MODEL = process.env.AI_MODEL || 'gpt-5.6-terra';
+const MODEL = process.env.AI_MODEL || 'gpt-5.6-luna';
 const GITHUB_API = 'https://api.github.com';
 
 const MAX_RETRIES = 3;

@@ -2,13 +2,13 @@
 'use strict';
 
 /**
- * AI-Powered Changelog Generator using GitHub Models
+ * AI-Powered Changelog Generator using OpenAI
  *
- * Analyzes PR diffs and calls the GitHub Models API to generate Keep a Changelog
+ * Analyzes PR diffs and calls the OpenAI API to generate Keep a Changelog
  * formatted entries. Updates each configured package's CHANGELOG.md in place.
  *
  * Required environment variables:
- *   AI_API_KEY       - GitHub Models API key
+ *   AI_API_KEY       - OpenAI API key
  *   PR_NUMBER        - Pull request number
  *   PR_TITLE         - Pull request title
  *   BASE_REF         - Base branch name (e.g. main)
@@ -20,8 +20,8 @@
  *   PR_BODY              - Pull request description (for linked issue extraction)
  *   GITHUB_TOKEN         - GitHub token for fetching linked issue details
  *   PROJECT_CONTEXT      - Short project description for the AI prompt
- *   AI_MODEL             - Model identifier (default: gpt-4.1)
- *   GITHUB_MODELS_API_URL - API endpoint URL
+ *   AI_MODEL             - Model identifier (default: gpt-5.6-terra)
+ *   AI_API_URL           - API endpoint URL (default: OpenAI chat completions)
  *   MAX_DIFF_CHARS       - Max diff characters sent to the AI (default: 8000)
  *   DRY_RUN              - When "true", prints entries without modifying any files
  */
@@ -30,8 +30,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const GITHUB_MODELS_API = process.env.GITHUB_MODELS_API_URL || 'https://models.github.ai/inference/chat/completions';
-const MODEL = process.env.AI_MODEL || 'gpt-4.1';
+const AI_API_URL = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
+const MODEL = process.env.AI_MODEL || 'gpt-5.6-terra';
 const GITHUB_API = 'https://api.github.com';
 
 const MAX_RETRIES = 3;
@@ -226,7 +226,7 @@ function buildEntryLink(linkedIssues, prNumber, repoOwner, repoName) {
 }
 
 // ---------------------------------------------------------------------------
-// GitHub Models API
+// OpenAI API
 // ---------------------------------------------------------------------------
 
 function sleep(ms) {
@@ -234,7 +234,7 @@ function sleep(ms) {
 }
 
 /**
- * Call the GitHub Models API to generate changelog entries for one package.
+ * Call the OpenAI API to generate changelog entries for one package.
  * Retries up to MAX_RETRIES times with exponential back-off.
  *
  * @returns {{ versionBump: string, category: string, entries: string[] }}
@@ -307,7 +307,7 @@ Respond with ONLY valid JSON:`;
   let lastError;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(GITHUB_MODELS_API, {
+      const response = await fetch(AI_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -328,14 +328,14 @@ Respond with ONLY valid JSON:`;
 
       if (!response.ok) {
         const errorText = await response.text();
-        const error = new Error(`GitHub Models API error (${response.status}): ${errorText}`);
+        const error = new Error(`OpenAI API error (${response.status}): ${errorText}`);
 
         if (response.status === 401) {
-          error.message += '\n\n🔑 Authentication failed. Verify that AI_API_KEY is a valid GitHub Models token.';
+          error.message += '\n\n🔑 Authentication failed. Verify that AI_API_KEY is a valid OpenAI API key.';
         } else if (response.status === 403) {
-          error.message += '\n\n🚫 Access denied. GitHub Models requires a GitHub Copilot for Business subscription.';
+          error.message += '\n\n🚫 Access denied. Verify your OpenAI API key has access to this model and that your organization is verified if required.';
         } else if (response.status === 404) {
-          error.message += `\n\n❓ Model "${MODEL}" not found. Check available models at https://github.com/marketplace/models`;
+          error.message += `\n\n❓ Model "${MODEL}" not found. Check available models at https://platform.openai.com/docs/models`;
         } else if (response.status === 429) {
           error.message += '\n\n⏱️ Rate limit exceeded. Will retry...';
         }

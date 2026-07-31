@@ -1,5 +1,5 @@
 name: 'Auto Changelog'
-description: 'AI-powered changelog generator using the GitHub Models API. Analyzes PR diffs and updates CHANGELOG.md files with Keep a Changelog-formatted entries.'
+description: 'AI-powered changelog generator using the OpenAI API. Analyzes PR diffs and updates CHANGELOG.md files with Keep a Changelog-formatted entries.'
 author: 'vensas'
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 inputs:
   ai-api-key:
-    description: 'GitHub Models API key (a PAT with models:read permission, or a GitHub Copilot token)'
+    description: 'OpenAI API key used to generate changelog entries'
     required: true
   github-token:
     description: 'GitHub token used to fetch linked issue details and post a PR comment. If omitted, no PR comment is posted.'
@@ -42,13 +42,13 @@ inputs:
     required: false
     default: ''
   model:
-    description: 'GitHub Models model identifier to use for generation'
+    description: 'OpenAI model identifier to use for generation'
     required: false
-    default: 'gpt-4.1'
-  github-models-api:
-    description: 'GitHub Models API endpoint URL'
+    default: 'gpt-5.6-terra'
+  ai-api-url:
+    description: 'OpenAI-compatible chat completions endpoint URL'
     required: false
-    default: 'https://models.github.ai/inference/chat/completions'
+    default: 'https://api.openai.com/v1/chat/completions'
   max-diff-chars:
     description: 'Maximum number of characters from the per-package diff to send to the AI'
     required: false
@@ -131,7 +131,7 @@ runs:
         PACKAGES_CONFIG: ${{ inputs.packages }}
         PROJECT_CONTEXT: ${{ inputs.project-context }}
         AI_MODEL: ${{ inputs.model }}
-        GITHUB_MODELS_API_URL: ${{ inputs.github-models-api }}
+        AI_API_URL: ${{ inputs.ai-api-url }}
         MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: node ${{ github.action_path }}/generate-changelog.js
@@ -186,7 +186,7 @@ runs:
           } else if (isDryRun) {
             body = `📋 **Changelog preview**\n\n\`\`\`markdown\n${entry}\n\`\`\``;
           } else {
-            body = `✅ **Changelog updated!**\n\nUpdated: ${updates}\n\n\`\`\`markdown\n${entry}\n\`\`\`\n\n*Generated using GitHub Models AI. Review and adjust if needed.*`;
+            body = `✅ **Changelog updated!**\n\nUpdated: ${updates}\n\n\`\`\`markdown\n${entry}\n\`\`\`\n\n*Generated using OpenAI. Review and adjust if needed.*`;
           }
 
           await github.rest.issues.createComment({

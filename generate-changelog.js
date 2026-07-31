@@ -315,7 +315,7 @@ Respond with ONLY valid JSON:`;
         },
         body: JSON.stringify({
           model: MODEL,
-          max_tokens: 1500,
+          max_completion_tokens: 1500,
           messages: [
             {
               role: 'system',

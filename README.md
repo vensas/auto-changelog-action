@@ -1,13 +1,13 @@
 # auto-changelog-action
 
-A composite GitHub Action that uses the [GitHub Models API](https://github.com/marketplace/models) to automatically generate [Keep a Changelog](https://keepachangelog.com) entries when a pull request is opened or updated.
+A composite GitHub Action that uses the [OpenAI API](https://platform.openai.com/docs/api-reference/chat) to automatically generate [Keep a Changelog](https://keepachangelog.com) entries when a pull request is opened or updated.
 
 The action handles the full lifecycle:
 1. **Bot-loop detection** — skips if the last commit was from the bot or manually touched a `CHANGELOG.md`
 2. Detects which configured packages have source-file changes in the PR
 3. If no source changes are found, clears stale `[Unreleased]` entries (e.g. after a code revert)
 4. Fetches any linked issues (via closing keywords like `closes #123`) for richer AI context
-5. Calls the GitHub Models API with a filtered per-package diff
+5. Calls the OpenAI API with a filtered per-package diff
 6. Writes the generated entries into each package's `[Unreleased]` section
 7. Commits and pushes the updated changelogs back to the PR branch
 8. Posts a PR comment with a preview of what was written (or cleared)
@@ -18,8 +18,8 @@ The action handles the full lifecycle:
 
 | Requirement | Notes |
 |---|---|
-| **GitHub Copilot for Business** | Required to call the GitHub Models API |
-| **PAT secret (`AI_API_KEY`)** | A Personal Access Token with `models:read` scope, stored as a repository secret. This PAT is also used to push the changelog commit back to the PR branch. |
+| **OpenAI API key (`ai-api-key`)** | An [OpenAI API key](https://platform.openai.com/api-keys), stored as a repository secret (e.g. `OPENAI_API_KEY`). Used only to call the OpenAI API — it does **not** need any GitHub permissions. |
+| **GitHub token for checkout** | The default `${{ secrets.GITHUB_TOKEN }}`, with `contents: write` granted via the job's `permissions` block, referenced in the checkout step so the action can push the changelog commit back to the PR branch. Note: pushes made with `GITHUB_TOKEN` don't trigger other workflow runs, so required status checks (if any) won't automatically re-run against the new commit. |
 | **`## [Unreleased]` section** | Each package's `CHANGELOG.md` must already contain this header. |
 
 ---
@@ -54,13 +54,12 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-          # Use the PAT so the bot can push commits back to the PR branch
-          token: ${{ secrets.AI_API_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate changelog
         uses: vensas/auto-changelog-action@v1
         with:
-          ai-api-key: ${{ secrets.AI_API_KEY }}
+          ai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}
           pr-title: ${{ github.event.pull_request.title }}
@@ -97,7 +96,7 @@ The action commits, pushes, and posts the PR comment automatically. The checkout
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `ai-api-key` | Yes | — | GitHub Models API key (PAT with `models:read`) |
+| `ai-api-key` | Yes | — | OpenAI API key |
 | `github-token` | No | — | Token for fetching linked issue details and posting PR comments. If omitted, no comment is posted. |
 | `pr-number` | Yes | — | Pull request number |
 | `pr-title` | Yes | — | Pull request title |
@@ -105,8 +104,8 @@ The action commits, pushes, and posts the PR comment automatically. The checkout
 | `base-ref` | Yes | — | Base branch name (e.g. `main`) |
 | `packages` | Yes | — | JSON array of package configurations (see below) |
 | `project-context` | No | `''` | Short project description added to the AI prompt |
-| `model` | No | `gpt-4.1` | GitHub Models model identifier |
-| `github-models-api` | No | `https://models.github.ai/inference/chat/completions` | API endpoint URL |
+| `model` | No | `gpt-5.6-luna` | OpenAI model identifier |
+| `ai-api-url` | No | `https://api.openai.com/v1/chat/completions` | OpenAI-compatible chat completions endpoint URL |
 | `max-diff-chars` | No | `8000` | Maximum characters from the per-package diff sent to the AI |
 | `dry-run` | No | `false` | When `true`, generates entries and posts a preview comment without modifying any files |
 | `branch-ref` | No | `''` | Branch to commit and push changelog changes back to. If empty, files are written but not committed. |
